@@ -1,0 +1,47 @@
+name: Runtime script regression tests
+
+on:
+  push:
+    paths:
+      - 'package/mtk/applications/mtwifi-cfg/**'
+      - 'package/mtk/applications/luci-app-turboacc-mtk/**'
+      - 'package/base-files/files/etc/rc.common'
+      - 'tests/runtime/**'
+      - '.github/workflows/runtime-tests.yml'
+  pull_request:
+    paths:
+      - 'package/mtk/applications/mtwifi-cfg/**'
+      - 'package/mtk/applications/luci-app-turboacc-mtk/**'
+      - 'package/base-files/files/etc/rc.common'
+      - 'tests/runtime/**'
+      - '.github/workflows/runtime-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            package/mtk/applications/mtwifi-cfg
+            package/mtk/applications/luci-app-turboacc-mtk
+            package/base-files/files/etc
+            tests/runtime
+      - name: Install host test runtimes
+        run: sudo apt-get update && sudo apt-get install -y lua5.1 luajit busybox
+      - name: Check shell syntax
+        run: |
+          sh -n package/mtk/applications/luci-app-turboacc-mtk/root/etc/init.d/turboacc
+          sh -n package/mtk/applications/mtwifi-cfg/files/netifd/mtwifi.sh
+      - name: Test with BusyBox ash and Lua 5.1 runtimes
+        env:
+          TEST_LUA: lua5.1 luajit
+        run: |
+          mkdir -p "$RUNNER_TEMP/runtime-shell"
+          ln -s "$(command -v busybox)" "$RUNNER_TEMP/runtime-shell/sh"
+          TEST_SHELL="$RUNNER_TEMP/runtime-shell/sh" python3 tests/runtime/test_runtime.py

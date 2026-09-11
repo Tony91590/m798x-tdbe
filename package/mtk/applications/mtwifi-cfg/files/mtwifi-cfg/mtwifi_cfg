@@ -33,9 +33,8 @@ function string:split(sep)
 end
 
 function load_profile(path)
-    local cfgs = {}
-
-    cfgobj = datconf.openfile(path)
+    local cfgs
+    local cfgobj = datconf.openfile(path)
     if cfgobj then
         cfgs = cfgobj:getall()
         cfgobj:close()
@@ -92,14 +91,16 @@ end
 
 function ifup(ifname)
     if ifname and #ifname > 0 then
-        os.execute("ifconfig "..ifname.." up")
+        local ok = os.execute("ifconfig "..ifname.." up")
+        if ok ~= true and ok ~= 0 then error("mtwifi-cfg: interface up failed") end
         nixio.syslog("info", "mtwifi-cfg: ifconfig up "..ifname)
     end
 end
 
 function ifdown(ifname)
     if ifname and #ifname > 0 then
-        os.execute("ifconfig "..ifname.." down")
+        local ok = os.execute("ifconfig "..ifname.." down")
+        if ok ~= true and ok ~= 0 then error("mtwifi-cfg: interface down failed") end
         nixio.syslog("info", "mtwifi-cfg: ifconfig down "..ifname)
     end
 end
@@ -367,19 +368,35 @@ end
 function mtwifi_cfg_setup(argv)
     local cfg = cjson.decode(argv)
 
-    utils.log2file("input = " .. inspect(cfg))
+    if type(cfg) ~= "table" or type(cfg.device) ~= "string" or
+        type(cfg.config) ~= "table" or type(cfg.interfaces) ~= "table" then
+        nixio.syslog("err", "mtwifi-cfg: invalid configuration structure")
+        return false
+    end
 
     local devname = cfg.device
     local dev = l1dat.devname_ridx[devname]
 
-    if not dev then return end
+    if not dev then
+        nixio.syslog("err", "mtwifi-cfg: unknown wireless device")
+        return false
+    end
+
+    for _, vif in pairs(cfg.interfaces) do
+        if type(vif) ~= "table" or type(vif.config) ~= "table" or
+            (vif.config.mode ~= "ap" and vif.config.mode ~= "sta") or
+            not defs.enc2dat[vif.config.encryption] then
+            nixio.syslog("err", "mtwifi-cfg: unsupported interface configuration")
+            return false
+        end
+    end
 
     local profile = dev.profile_path
 
     local dats = load_profile(profile)
     if not dats then
         nixio.syslog("err", "mtwifi-cfg: profile ".. profile .. "open failed")
-        return
+        return false
     end
     local dats_orig = load_profile(profile)
 
@@ -387,14 +404,15 @@ function mtwifi_cfg_setup(argv)
 
     if vif_num == 0 then
         nixio.syslog("err", "mtwifi-cfg: not valid vif found!")
-        return
+        return false
     end
     if bssid_num > defs.max_mbssid then
         nixio.syslog("err", "mtwifi-cfg: too many vifs!")
-        return
+        return false
     end
     if apcli_num > 1 then
         nixio.syslog("err", "mtwifi-cfg: only support one apcli vif!")
+        return false
     end
 
         dats.BssidNum = 4
@@ -403,7 +421,7 @@ function mtwifi_cfg_setup(argv)
     -- setup wireless mode
     if type(cfg.config.htmode) ~= type("") then
         nixio.syslog("err", "mtwifi-cfg: invalid htmode!")
-        return
+        return false
     end
 
     local WirelessMode
@@ -433,14 +451,14 @@ function mtwifi_cfg_setup(argv)
 
     if not WirelessMode then
         nixio.syslog("err", "mtwifi-cfg: invalid wireless mode!")
-        return
+        return false
     end
 
     -- setup bandwidth
     local bw = string.match(cfg.config.htmode, "%d+")
     if not bw then
         nixio.syslog("err", "mtwifi-cfg: invalid bandwidth!")
-        return
+        return false
     end
 
     -- default bw is 20MHz
@@ -687,7 +705,7 @@ function mtwifi_cfg_setup(argv)
 
     local reinstall_wifidrv = false
     local cfg_diff = diff_cfg(dats_orig, dats)
-    utils.log2file("diff = " .. inspect(cfg_diff))
+    utils.log_config_changes(cfg_diff)
 
     save_profile(dats, profile)
 
@@ -695,7 +713,7 @@ function mtwifi_cfg_setup(argv)
         if cfg_diff[v] ~= nil then
             if utils.exists("/sys/module/mt_wifi") == false then
                 nixio.syslog("err", "mtwifi-cfg: mtwifi module is build-in, please reboot the device!")
-                return
+                return false
             end
             reinstall_wifidrv = true
         end
@@ -757,6 +775,7 @@ function mtwifi_cfg_setup(argv)
     end
 
     mtwifi_cfg_iwpriv_hook(cfg)
+    return true
 end
 
 function mtwifi_cfg_down(devname)
@@ -776,14 +795,21 @@ local action = {
 
     ["setup"] = function()
         local argv = io.read()
-        if #argv > 0 then
-            mtwifi_cfg_setup(argv)
+        if argv and #argv > 0 then
+            return mtwifi_cfg_setup(argv)
         end
+        return false
     end
 }
 
-if #arg == 1 then
-    action[arg[1]]()
-elseif #arg == 2 then
-    action[arg[1]](arg[2])
+if (#arg ~= 1 and #arg ~= 2) or not action[arg[1]] then
+    nixio.syslog("err", "mtwifi-cfg: invalid command")
+    os.exit(1)
+end
+
+local ok, result = pcall(action[arg[1]], arg[2])
+if not ok or result == false then
+    -- Do not include exception text: parsers and dependencies may echo secrets.
+    nixio.syslog("err", "mtwifi-cfg: operation failed")
+    os.exit(1)
 end
