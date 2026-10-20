@@ -72,7 +72,7 @@ jobs:
             ${{ runner.os }}-immortalwrt-host-toolchain-
 
       - name: Initialize Build Environment
-        run: |
+        run:
           sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
           sudo timedatectl set-timezone "Asia/Shanghai"
 
@@ -81,7 +81,7 @@ jobs:
           set -euo pipefail
 
           if ! command -v ccache >/dev/null 2>&1; then
-            sudo apt-get update
+            sudo apt-get upda
             sudo apt-get install -y ccache
           fi
 
@@ -90,7 +90,7 @@ jobs:
           ccache --zero-stats || true
           ccache --show-config | sed -n '1,20p'
 
-      - name: Update and Install Feeds
+      - name: Update and Install Feed
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
