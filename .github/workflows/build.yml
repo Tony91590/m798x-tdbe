@@ -103,36 +103,6 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Apply OpenWrt Patches
-        run: |
-         set -euo pipefail
-
-          PATCH_FILE="patches/diff.patch"
-          FILE="package/network/config/netifd/files/sbin/ifdown"
-
-         if [ ! -f "$PATCH_FILE" ]; then
-          echo "::error::Patch file not found: $PATCH_FILE"
-          exit 1
-         fi
-
-             patch --dry-run -p1 < "$PATCH_FILE"
-             patch -p1 < "$PATCH_FILE"
-
-             find . -type f -name '*.orig' -delete
-
-             if [ ! -f "$(dirname "$FILE")/ifup" ]; then
-               echo "::error::ifup file not found"
-               exit 1
-             fi
-
-             rm -f "$FILE"
-             ln -s ifup "$FILE"
-
-             test -L "$FILE"
-             test "$(readlink "$FILE")" = "ifup"
-
-             echo "ifdown successfully linked to ifup"
-
       - name: Load Configuration (${{ matrix.config_name }})
         run: |
           CONFIG_FILE="defconfig/${{ matrix.config_file }}.config"
