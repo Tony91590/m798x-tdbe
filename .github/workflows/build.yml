@@ -2,60 +2,209 @@ name: Build ImmortalWrt
 
 on:
   push:
-    branches-ignore:
-      - tenda-be12-pro  # 排除 tenda-be12-pro 分支，其他所有分支都会触发
     tags:
       - v**
-  workflow_dispatch: # 允许手动在网页触发
+  workflow_dispatch:
+    inputs:
+      build_config:
+        description: Firmware config to build
+        required: true
+        type: choice
+        default: full
+        options:
+          - full
+          - mini
+          - both
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     strategy:
+      fail-fast: false
       matrix:
-        config_name: [ minimal, full ]
+        include: ${{ fromJSON(github.event_name == 'push' && '[{"config_name":"full","config_file":"full"}]' || inputs.build_config == 'mini' && '[{"config_name":"mini","config_file":"minimal"}]' || inputs.build_config == 'both' && '[{"config_name":"mini","config_file":"minimal"},{"config_name":"full","config_file":"full"}]' || '[{"config_name":"full","config_file":"full"}]') }}
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_COMPRESS: "true"
+      CCACHE_MAXSIZE: "3000M"
+      CCACHE_BASEDIR: ${{ github.workspace }}
+
     steps:
       - name: Checkout My Repository Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.0
         with:
-          fetch-depth: 0 # 获取完整历史，方便某些脚本获取版本号（可选）
+          fetch-depth: 0
+
+      - name: Restore Download Cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: dl
+          key: ${{ runner.os }}-immortalwrt-dl-${{ matrix.config_name }}-${{ hashFiles(format('defconfig/{0}.config', matrix.config_file)) }}
+          restore-keys: |
+            ${{ runner.os }}-immortalwrt-dl-${{ matrix.config_name }}-
+            ${{ runner.os }}-immortalwrt-dl-
+
+      - name: Restore Compiler Cache
+        id: ccache-restore
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-immortalwrt-ccache-${{ matrix.config_name }}-${{ github.ref_name }}-${{ hashFiles(format('defconfig/{0}.config', matrix.config_file)) }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-immortalwrt-ccache-${{ matrix.config_name }}-${{ github.ref_name }}-${{ hashFiles(format('defconfig/{0}.config', matrix.config_file)) }}-
+            ${{ runner.os }}-immortalwrt-ccache-${{ matrix.config_name }}-
+            ${{ runner.os }}-immortalwrt-ccache-
+
+      - name: Restore Host/Toolchain Cache
+        id: host-toolchain-cache
+        uses: actions/cache/restore@v6.1.0
+        with:
+          path: |
+            staging_dir/host
+            staging_dir/hostpkg
+            staging_dir/toolchain-*
+            build_dir/host
+            build_dir/hostpkg
+            build_dir/toolchain-*
+          key: ${{ runner.os }}-immortalwrt-host-toolchain-${{ matrix.config_name }}-${{ github.ref_name }}-${{ hashFiles('tools/**', 'toolchain/**', 'include/**') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-immortalwrt-host-toolchain-${{ matrix.config_name }}-${{ github.ref_name }}-${{ hashFiles('tools/**', 'toolchain/**', 'include/**') }}-
+            ${{ runner.os }}-immortalwrt-host-toolchain-${{ matrix.config_name }}-
+            ${{ runner.os }}-immortalwrt-host-toolchain-
 
       - name: Initialize Build Environment
-        env:
-          DEBIAN_FRONTEND: noninteractive
         run: |
-          # 安装 OpenWrt/ImmortalWrt 构建所需依赖
           sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.org/init_build_environment.sh)'
           sudo timedatectl set-timezone "Asia/Shanghai"
-      
+
+      - name: Prepare Compiler Cache
+        run: |
+          set -euo pipefail
+
+          if ! command -v ccache >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ccache
+          fi
+
+          mkdir -p "${CCACHE_DIR}" dl
+          ccache -M "${CCACHE_MAXSIZE}"
+          ccache --zero-stats || true
+          ccache --show-config | sed -n '1,20p'
 
       - name: Update and Install Feeds
         run: |
-          # 当前目录已经是源码根目录
+          set -euo pipefail
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
+      - name: Apply OpenWrt Patches
+        run: |
+         set -euo pipefail
+
+          PATCH_FILE="patches/diff.patch"
+          FILE="package/network/config/netifd/files/sbin/ifdown"
+
+         if [ ! -f "$PATCH_FILE" ]; then
+          echo "::error::Patch file not found: $PATCH_FILE"
+          exit 1
+         fi
+
+             patch --dry-run -p1 < "$PATCH_FILE"
+             patch -p1 < "$PATCH_FILE"
+
+             find . -type f -name '*.orig' -delete
+
+             if [ ! -f "$(dirname "$FILE")/ifup" ]; then
+               echo "::error::ifup file not found"
+               exit 1
+             fi
+
+             rm -f "$FILE"
+             ln -s ifup "$FILE"
+
+             test -L "$FILE"
+             test "$(readlink "$FILE")" = "ifup"
+
+             echo "ifdown successfully linked to ifup"
+
       - name: Load Configuration (${{ matrix.config_name }})
         run: |
-          CONFIG_FILE="defconfig/${{ matrix.config_name }}.config"
+          CONFIG_FILE="defconfig/${{ matrix.config_file }}.config"
+
+          set_config() {
+            local key="$1"
+            local value="$2"
+
+            if grep -q "^# ${key} is not set$" .config; then
+              sed -i "s|^# ${key} is not set$|${key}=${value}|" .config
+            elif grep -q "^${key}=" .config; then
+              sed -i "s|^${key}=.*$|${key}=${value}|" .config
+            else
+              echo "${key}=${value}" >> .config
+            fi
+          }
+
           if [ ! -f "$CONFIG_FILE" ]; then
-            echo "❌ Config file not found: $CONFIG_FILE"
+            echo "Config file not found: $CONFIG_FILE"
             exit 1
           fi
+
           cp -f "$CONFIG_FILE" .config
-          echo "✅ Successfully loaded $CONFIG_FILE"
+          echo "Successfully loaded $CONFIG_FILE"
+
+          set_config "CONFIG_CCACHE" "y"
 
           make defconfig
-          echo "📄 Content of .config:"
-          cat .config
+
+          echo "Key config:"
+          grep -E '^(CONFIG_TARGET_|CONFIG_CCACHE=|CONFIG_PACKAGE_luci-app-ttyd=|CONFIG_PACKAGE_ttyd=)' .config || true
+
+      - name: Download Sources
+        run: |
+          make download -j"$(nproc)"
+          find dl -type f -size -1024c -delete
 
       - name: Compile Firmware
         run: |
-          make -j$(nproc) -s V=s
+          set -euo pipefail
 
-      # ... 构建步骤 ...
-      - name: Upload Artifacts (as ZIPs, unavoidable)
-        uses: actions/upload-artifact@v4
+          ccache --show-stats || true
+
+          if ! make -j"$(nproc)"; then
+            echo "::warning::Parallel build failed, retrying with -j1 V=s"
+            make -j1 V=s
+          fi
+
+          ccache --show-stats || true
+
+      - name: Save Compiler Cache
+        if: always() && steps.ccache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: .ccache
+          key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
+
+      - name: Save Host/Toolchain Cache
+        if: success() && steps.host-toolchain-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6.1.0
+        with:
+          path: |
+            staging_dir/host
+            staging_dir/hostpkg
+            staging_dir/toolchain-*
+            build_dir/host
+            build_dir/hostpkg
+            build_dir/toolchain-*
+          key: ${{ steps.host-toolchain-cache.outputs.cache-primary-key }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: firmware-${{ matrix.config_name }}
           path: bin/targets/mediatek/filogic/*.bin
@@ -68,7 +217,7 @@ jobs:
     if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           path: all-firmwares
 
@@ -86,22 +235,29 @@ jobs:
           done
 
       - name: Create Unified Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.1
         with:
           make_latest: true
-          tag_name: ${{ github.ref_name }}   # ← 此时 github.ref_name 就是 tag 名，如 v0.0.1
+          tag_name: ${{ github.ref_name }}
           files: final-release/*.bin
           draft: true
           body: |
-            ## 📦 发布说明
+            ## Release Notes
 
-            ### ✨ 构建配置
-            - **minimal**: 最小化构建，仅包含核心功能。
-            - **full**: 完整构建，包含以下额外预装插件：
-              - `luci-proto-wireguard`: WireGuard 协议支持
-              - `luci-app-wol`: 网络唤醒 (WoL) 功能
-              - `luci-i18n-wol-zh-cn`: WoL 中文语言包
-              - `ddns-scripts-cloudflare`: Cloudflare DDNS 脚本
-              - `luci-app-ddns`: 动态 DNS 配置界面
-              - `luci-i18n-ddns-zh-cn`: DDNS 中文语言包
-              - `bind-host`: BIND DNS 服务器宿主支持
+            ### Build Configuration
+            - Tags build the full firmware by default.
+            - Mini is available through manual workflow_dispatch.
+            - Full includes the following additional packages:
+              - luci-proto-wireguard
+              - luci-app-wol
+              - luci-i18n-wol-zh-cn
+              - ddns-scripts-cloudflare
+              - luci-app-ddns
+              - luci-i18n-ddns-zh-cn
+              - bind-host
+              - luci-app-store
+              - kmod-tun
+              - kmod-iptunnel
+              - kmod-wireguard
+              - luci-app-ttyd
+              - ttyd
