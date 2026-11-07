@@ -92,13 +92,19 @@ mtwifi_vif_sta_set_data() {
 }
 
 drv_mtwifi_setup() {
-	ubus -t 120 wait_for network.interface.lan
+	if ! ubus -t 120 wait_for network.interface.lan; then
+		wireless_setup_failed "LAN_NOT_READY"
+		return 1
+	fi
 
 	local dev="$1"
 
 	json_add_string device "$dev"
 
-	lock $LOCK_FILE
+	if ! lock "$LOCK_FILE"; then
+		wireless_setup_failed "LOCK_FAILED"
+		return 1
+	fi
 
 	logger -t "netifd-mtwifi" "up: $dev"
 
@@ -111,7 +117,11 @@ drv_mtwifi_setup() {
 	APCLI_IDX=0
 	for_each_interface sta mtwifi_vif_sta_set_data
 
-	json_dump | /sbin/mtwifi_cfg setup
+	if ! json_dump | /sbin/mtwifi_cfg setup; then
+		lock -u "$LOCK_FILE"
+		wireless_setup_failed "MTWIFI_SETUP_FAILED"
+		return 1
+	fi
 
 	for_each_interface ap mtwifi_vif_ap_config
 	for_each_interface sta mtwifi_vif_sta_config
