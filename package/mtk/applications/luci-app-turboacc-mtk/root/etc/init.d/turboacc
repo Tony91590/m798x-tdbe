@@ -57,7 +57,7 @@ start_service() {
 		set_hnat_enabled "$fastpath_mh_eth_hnat"
 
 		if [ "$fastpath_mh_eth_hnat" -eq "1" ]; then
-			local fastpath_mh_eth_hnat_v6 fastpath_mh_eth_hnat_ap fastpath_mh_eth_hnat_bind_rate
+			local fastpath_mh_eth_hnat_v6 fastpath_mh_eth_hnat_bind_rate
 
 			config_get_bool "fastpath_mh_eth_hnat_v6" "config" "fastpath_mh_eth_hnat_v6" "1"
 			echo "8 $fastpath_mh_eth_hnat_v6" > "$hnat_path/hnat_setting"
