@@ -219,24 +219,11 @@ return view.extend({
 		o.rmempty = false;
 		o.depends('fastpath_mh_eth_hnat', '1');
 		
-		o = s.option(form.Value, 'fastpath_mh_eth_hnat_ap', _('Enable AP Mode'),
-			_('Fill in ip to enable AP Mode(reboot needed)'));
-		o.optional = true;
-		o.depends('fastpath_mh_eth_hnat', '1');
-		
 		o = s.option(form.Value, 'fastpath_mh_eth_hnat_bind_rate', _('HNAT bind rate threshold (pps)'),
 			_('The smaller the threshold, the easier it is for the connection to be accelerated.'));
 		o.optional = true;
 		o.datatype = 'range(1,30)';
 		o.placeholder = 30;
-		o.depends('fastpath_mh_eth_hnat', '1');
-
-		o = s.option(form.ListValue, 'fastpath_mh_eth_hnat_ppenum', _('Number of HNAT PPE'),
-			_('Apply this setting after reboot.'));
-		o.rmempty = false;
-		o.value(1);
-		o.value(2);
-		o.default = 2;
 		o.depends('fastpath_mh_eth_hnat', '1');
 
 		o = s.option(form.ListValue, 'fullcone', _('Full cone NAT'),

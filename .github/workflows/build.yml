@@ -16,8 +16,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - config_name: minimal
-            config_file: minimal
           - config_name: full
             config_file: full
 
