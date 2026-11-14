@@ -162,7 +162,7 @@ generate_network() {
 		static)
 			local ipad
 			case "$1" in
-				lan) ipad=${ipaddr:-"192.168.6.1"} ;;
+				lan) ipad=${ipaddr:-"192.168.1.1"} ;;
 				*) ipad=${ipaddr:-"192.168.$((addr_offset++)).1"} ;;
 			esac
 
@@ -314,14 +314,14 @@ generate_static_system() {
 		set system.@system[-1].hostname='ImmortalWrt'
 		set system.@system[-1].timezone='UTC'
 		set system.@system[-1].ttylogin='0'
-		set system.@system[-1].log_size='128'
+		set system.@system[-1].log_size='512'
 		set system.@system[-1].urandom_seed='0'
 
 		delete system.ntp
 		set system.ntp='timeserver'
 		set system.ntp.enabled='1'
 		set system.ntp.enable_server='0'
-		add_list system.ntp.server='time1.apple.com'
+		add_list system.ntp.server='time.apple.com'
 		add_list system.ntp.server='time1.google.com'
 		add_list system.ntp.server='time.cloudflare.com'
 		add_list system.ntp.server='pool.ntp.org'
