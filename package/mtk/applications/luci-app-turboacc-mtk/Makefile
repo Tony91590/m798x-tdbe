@@ -18,7 +18,6 @@ LUCI_DEPENDS:= \
 	+kmod-nft-socket +kmod-nft-tproxy +kmod-nft-nat \
 	+kmod-ipt-nat6 +kmod-ipt-nat \
 	+kmod-ipt-physdev \
-	+kmod-ipt-fullconenat \
 	@!PACKAGE_luci-app-turboacc
 LUCI_PKGARCH:=all
 
