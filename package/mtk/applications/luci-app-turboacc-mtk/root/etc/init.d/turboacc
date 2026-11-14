@@ -79,14 +79,6 @@ _uci_bool_enabled() {
 	return 1
 }
 
-default_fullcone_mode() {
-	if [ -e "/lib/modules/$(uname -r)/xt_FULLCONENAT.ko" ]; then
-		printf '1\n'
-	else
-		printf '2\n'
-	fi
-}
-
 # ---------------------------------------------------------------------------
 # procd lifecycle
 # ---------------------------------------------------------------------------
@@ -199,7 +191,7 @@ start_service() {
 
 	# ---------- fullcone NAT ----------
 	local fullcone
-	config_get fullcone "config" "fullcone" "$(default_fullcone_mode)"
+	config_get fullcone "config" "fullcone" "2"
 	if [ -w "/proc/sys/net/netfilter/nf_conntrack_nat_mode" ]; then
 		echo "$fullcone" >"/proc/sys/net/netfilter/nf_conntrack_nat_mode" 2>/dev/null || \
 			logger -t turboacc "WARNING: failed to write nf_conntrack_nat_mode=$fullcone"
@@ -216,6 +208,11 @@ start_service() {
 	fi
 
 	logger -t turboacc "started (fastpath=$fastpath fullcone=$fullcone tcpcca=$tcpcca)"
+
+	sed -i '/prefer-family/d' /etc/wgetrc
+	echo "prefer-family = IPv4" >> /etc/wgetrc
+	echo 4096 > /proc/sys/vm/min_free_kbytes
+	echo 3 > /proc/sys/vm/drop_caches
 }
 
 reload_service() {
