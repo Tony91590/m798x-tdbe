@@ -1023,9 +1023,9 @@ function buildForm(features, config) {
 	var s = m.section(form.NamedSection, 'config', 'turboacc');
 	var o;
 	var tcpccaOptions = parseTokenList(features.hasTCPCCA);
-	var showFlowOffloading = true;
-	var showFastClassifier = true;
-	var showShortcutFeCm = true;
+	var showFlowOffloading = false;
+	var showFastClassifier = false;
+	var showShortcutFeCm = false;
 	var showMediatekHnat = true;
 
 	s.tab('engine', _('Main path'), _('Select the primary acceleration engine.'));
@@ -1162,7 +1162,7 @@ function buildForm(features, config) {
 	o = s.taboption('experience', form.ListValue, 'fullcone', _('Full cone NAT'),
 		_('Enable for gaming or P2P needs.'));
 	o.value('0', _('Disable'));
-	if (features.hasXTFULLCONENAT || config.fullcone === '1')
+	if (false)
 		o.value('1', _('XT_FULLCONE_NAT'));
 	o.value('2', _('Boardcom_FULLCONE_NAT'));
 	o.default = config.fullcone || getDefaultFullcone(features);
