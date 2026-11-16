@@ -1,1 +1,10 @@
-
+--- a/htdocs/luci-static/argon/css/cascade.css
++++ b/htdocs/luci-static/argon/css/cascade.css
+@@ -1380,6 +1380,7 @@ footer > a {
+ .alert.error,
+ .alert-message.error {
+   background-color: var(--warning);
++  color: var(--yellow);
+ }
+ .alert h4,
+ .alert-message h4 {
