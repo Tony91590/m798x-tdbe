@@ -96,13 +96,14 @@ jobs:
           make download -j"$(nproc)"
           find dl -type f -size -1024c -delete
 
-      - name: Compile Firmware
+      - name: Compile
+        shell: bash
         run: |
           set -euo pipefail
 
           if ! make -j"$(nproc)"; then
-            echo "::warning::Parallel build failed, retrying with -j1 V=s"
-            make -j1 V=s
+           echo "::warning::Parallel build failed, retrying with -j1 V=s"
+           make -j1 V=s
           fi
 
       - name: Upload Artifacts
