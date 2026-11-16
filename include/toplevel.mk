@@ -251,7 +251,7 @@ ifeq ($(SDK),1)
 
 %::
 	@+$(PREP_MK) $(NO_TRACE_MAKE) -r -s prereq
-	+$(MAKE) argon-patch
+	+$(MAKE) -C "$(TOPDIR)" -f "$(TOPDIR)/include/toplevel.mk" TOPDIR="$(TOPDIR)" argon-patch
 	@./scripts/config/conf $(KCONF_FLAGS) --defconfig=.config Config.in
 	@+$(ULIMIT_FIX) $(SUBMAKE) -r $@
 
@@ -259,7 +259,7 @@ else
 
 %::
 	@+$(PREP_MK) $(NO_TRACE_MAKE) -r -s prereq
-	+$(MAKE) argon-patch
+	+$(MAKE) -C "$(TOPDIR)" -f "$(TOPDIR)/include/toplevel.mk" TOPDIR="$(TOPDIR)" argon-patch
 	@( \
 		cp .config tmp/.config; \
 		./scripts/config/conf $(KCONF_FLAGS) --defconfig=tmp/.config -w tmp/.config Config.in > /dev/null 2>&1; \
@@ -278,13 +278,13 @@ endif
 package/symlinks:
 	./scripts/feeds update -a
 	./scripts/feeds install -a
-	+$(MAKE) argon-patch
+	+$(MAKE) -C "$(TOPDIR)" -f "$(TOPDIR)/include/toplevel.mk" TOPDIR="$(TOPDIR)" argon-patch
 
 # re-create index files, install symlinks
 package/symlinks-install:
 	./scripts/feeds update -i
 	./scripts/feeds install -a
-	+$(MAKE) argon-patch
+	+$(MAKE) -C "$(TOPDIR)" -f "$(TOPDIR)/include/toplevel.mk" TOPDIR="$(TOPDIR)" argon-patch
 
 # remove all symlinks, don't touch ./feeds
 package/symlinks-clean:
