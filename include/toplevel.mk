@@ -218,10 +218,40 @@ val.% var.%: FORCE
 
 WARN_PARALLEL_ERROR = $(if $(BUILD_LOG),,$(and $(filter -j,$(MAKEFLAGS)),$(findstring s,$(OPENWRT_VERBOSE))))
 
+# Apply the local Argon theme patch after ensuring the LuCI feed is available.
+.PHONY: argon-patch
+argon-patch:
+	@set -e; \
+	TARGET="$(TOPDIR)/feeds/luci/themes/luci-theme-argon"; \
+	PATCH_FILE="$(TOPDIR)/patches/argon.patch"; \
+	if [ ! -f "$$PATCH_FILE" ]; then \
+		echo "ERROR: Argon patch not found: $$PATCH_FILE"; \
+		exit 1; \
+	fi; \
+	if [ ! -f "$$TARGET/htdocs/luci-static/argon/css/cascade.css" ]; then \
+		echo "LuCI/Argon feed not found; updating and installing feeds..."; \
+		./scripts/feeds update -a; \
+		./scripts/feeds install -a; \
+	fi; \
+	if [ ! -f "$$TARGET/htdocs/luci-static/argon/css/cascade.css" ]; then \
+		echo "ERROR: Argon cascade.css is still missing after feed installation"; \
+		exit 1; \
+	fi; \
+	if patch -d "$$TARGET" -p1 --dry-run < "$$PATCH_FILE" >/dev/null 2>&1; then \
+		echo "Applying local Argon patch..."; \
+		patch -d "$$TARGET" -p1 < "$$PATCH_FILE"; \
+	elif patch -d "$$TARGET" -R -p1 --dry-run < "$$PATCH_FILE" >/dev/null 2>&1; then \
+		echo "Argon patch already applied."; \
+	else \
+		echo "ERROR: Argon patch does not apply cleanly; check the feed version and patch."; \
+		exit 1; \
+	fi
+
 ifeq ($(SDK),1)
 
 %::
 	@+$(PREP_MK) $(NO_TRACE_MAKE) -r -s prereq
+	+$(MAKE) argon-patch
 	@./scripts/config/conf $(KCONF_FLAGS) --defconfig=.config Config.in
 	@+$(ULIMIT_FIX) $(SUBMAKE) -r $@
 
@@ -229,6 +259,7 @@ else
 
 %::
 	@+$(PREP_MK) $(NO_TRACE_MAKE) -r -s prereq
+	+$(MAKE) argon-patch
 	@( \
 		cp .config tmp/.config; \
 		./scripts/config/conf $(KCONF_FLAGS) --defconfig=tmp/.config -w tmp/.config Config.in > /dev/null 2>&1; \
@@ -247,11 +278,13 @@ endif
 package/symlinks:
 	./scripts/feeds update -a
 	./scripts/feeds install -a
+	+$(MAKE) argon-patch
 
 # re-create index files, install symlinks
 package/symlinks-install:
 	./scripts/feeds update -i
 	./scripts/feeds install -a
+	+$(MAKE) argon-patch
 
 # remove all symlinks, don't touch ./feeds
 package/symlinks-clean:
