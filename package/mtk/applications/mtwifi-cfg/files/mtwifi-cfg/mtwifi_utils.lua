@@ -1,7 +1,8 @@
 #!/usr/bin/lua
 
-local nixio = require "nixio"
 local mtwifi_utils = {}
+
+local mtwifi_logfile = "/tmp/mtwifi.log"
 
 function mtwifi_utils.esc(x)
     return (x:gsub('%%', '%%%%')
@@ -82,27 +83,14 @@ function mtwifi_utils.token_get(str, n, v)
 end
 
 function mtwifi_utils.sleep(s)
-    local seconds = math.floor(s)
-    local nanoseconds = math.floor((s - seconds) * 1000000000)
-    while true do
-        local ok, remaining_seconds, remaining_nanoseconds = nixio.nanosleep(seconds, nanoseconds)
-        if ok then return end
-        if ok == nil then error("mtwifi-cfg: nanosleep failed") end
-        -- nixio returns false plus the remaining duration on EINTR.
-        seconds, nanoseconds = remaining_seconds, remaining_nanoseconds
-    end
+    local ntime = os.clock() + s
+    repeat until os.clock() > ntime
 end
 
-function mtwifi_utils.log_config_changes(diff)
-    local fields = {}
-    for field in pairs(diff) do
-        fields[#fields + 1] = field
-    end
-    table.sort(fields)
-    -- Only log field names, never configuration values or old/new secrets.
-    -- Use the system log's bounded storage instead of an append-only /tmp file.
-    nixio.syslog("info", "mtwifi-cfg: changed fields (" .. #fields .. "): " ..
-        table.concat(fields, ", "):sub(1, 1024))
+function mtwifi_utils.log2file(str)
+    logfile = io.open(mtwifi_logfile, "a")
+    logfile:write(os.date("%H:%M:%S", os.time()) .. " " .. str .. "\n")
+    logfile:close()
 end
 
 return mtwifi_utils
