@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Checkout My Repository Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -103,12 +103,12 @@ jobs:
           set -euo pipefail
 
           if ! make -j"$(nproc)"; then
-           echo "::warning::Parallel build failed, retrying with -j1 V=s"
-           make -j1 V=s
+            echo "::warning::Parallel build failed, retrying with -j1 V=s"
+            make -j1 V=s
           fi
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: firmware-${{ matrix.config_name }}
           path: bin/targets/mediatek/filogic/*.bin
@@ -122,7 +122,7 @@ jobs:
 
     steps:
       - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: all-firmwares
 
@@ -164,4 +164,4 @@ jobs:
               - `luci-app-store`: iStore 软件中心
               - `kmod-tun` / `kmod-iptunnel` / `kmod-wireguard`: VPN 隧道基础模块
               - `luci-app-ttyd` / `ttyd`: 网页终端
-            - **passwall**: 单独 workflow 构建，基于 full 额外包含 Passwall，并追加到同一发布。
+            - **passwall**: 单独 workflow 构建，基于 full extra contient Passwall，并 ajouté à la même publication.
