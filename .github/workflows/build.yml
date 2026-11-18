@@ -149,19 +149,32 @@ jobs:
           files: final-release/*.bin
           draft: true
           body: |
-            ## 📦 发布说明
+            ## 📦 Release Notes
 
-            ### ✨ 构建配置
-            - **minimal**: 最小化构建，仅包含核心功能。
-            - **full**: 完整构建，包含以下额外预装插件：
-              - `luci-proto-wireguard`: WireGuard 协议支持
-              - `luci-app-wol`: 网络唤醒 (WoL) 功能
-              - `luci-i18n-wol-zh-cn`: WoL 中文语言包
-              - `ddns-scripts-cloudflare`: Cloudflare DDNS 脚本
-              - `luci-app-ddns`: 动态 DNS 配置界面
-              - `luci-i18n-ddns-zh-cn`: DDNS 中文语言包
-              - `bind-host`: BIND DNS 服务器宿主支持
-              - `luci-app-store`: iStore 软件中心
-              - `kmod-tun` / `kmod-iptunnel` / `kmod-wireguard`: VPN 隧道基础模块
-              - `luci-app-ttyd` / `ttyd`: 网页终端
-            - **passwall**: 单独 workflow 构建，基于 full extra contient Passwall，并 ajouté à la même publication.
+            ### ✨ Build Configurations
+
+            - **minimal**: Minimal build containing only essential OpenWrt core components.
+
+            - **full**: Full build with the following additional pre-installed packages:
+              - `luci-proto-wireguard`: WireGuard VPN protocol support
+              - `wireguard-tools`: WireGuard management tools
+              - `luci-app-wol`: Wake-on-LAN (WoL) interface
+              - `luci-i18n-wol-zh-cn`: WoL Chinese translation
+              - `ddns-scripts-cloudflare`: Cloudflare DDNS scripts
+              - `ddns-scripts-services`: DDNS service support
+              - `luci-app-ddns`: Dynamic DNS configuration interface
+              - `luci-i18n-ddns-zh-cn`: DDNS Chinese translation
+              - `bind-host`: BIND DNS lookup utility
+              - `luci-app-upnp`: UPnP configuration interface
+              - `miniupnpd-nftables`: UPnP / NAT-PMP service
+              - `luci-app-firewall`: Firewall configuration interface
+              - `luci-app-ttyd` / `ttyd`: Web-based terminal
+              - `luci-app-eqos-mtk`: MediaTek QoS traffic management
+              - `luci-app-turboacc-mtk`: MediaTek network acceleration management
+              - `luci-app-mtwifi-cfg`: MediaTek Wi-Fi configuration interface
+              - `kmod-wireguard`: WireGuard kernel module
+              - `kmod-tun`: TUN virtual network device support
+              - `htop`: System resource monitor
+              - `etherwake`: Wake-on-LAN utility
+
+            - **passwall**: Built using a separate workflow based on the full configuration, with Passwall additionally integrated. The resulting firmware is uploaded to the same GitHub Release.
