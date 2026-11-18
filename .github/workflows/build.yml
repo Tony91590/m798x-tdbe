@@ -20,8 +20,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - config_name: full
-            config_file: full
+          - config_name: tenda-be12-pro
+            config_file: tenda-be12-pro
 
     env:
       DEBIAN_FRONTEND: noninteractive
