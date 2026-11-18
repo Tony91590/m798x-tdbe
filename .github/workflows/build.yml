@@ -1,4 +1,3 @@
-
 name: Build ImmortalWrt
 
 on:
@@ -31,13 +30,73 @@ jobs:
 
     steps:
       # ==========================================
+      # INSTALL GIT BEFORE CHECKOUT
+      # ==========================================
+      - name: Install Git
+        shell: bash
+        run: |
+          set -e
+
+          apt-get update
+          apt-get install -y git ca-certificates
+
+          echo "===== GIT VERSION ====="
+          git --version
+
+      # ==========================================
       # CHECKOUT SOURCE
       # ==========================================
       - name: Checkout My Repository Source
         uses: actions/checkout@v6
         with:
+          repository: Tony91590/m798x-tdbe
           fetch-depth: 0
           fetch-tags: true
+          persist-credentials: true
+
+      # ==========================================
+      # FIX GIT REVISION
+      # ==========================================
+      - name: Fix Git Revision
+        shell: bash
+        run: |
+          set -e
+
+          cd "$GITHUB_WORKSPACE"
+
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          echo "===== GIT INFORMATION ====="
+
+          echo "Repository:"
+          git rev-parse --show-toplevel
+
+          echo "Commit:"
+          git rev-parse HEAD
+
+          echo "Short commit:"
+          git rev-parse --short HEAD
+
+          echo "Branch:"
+          git branch --show-current || true
+
+          echo "Tags:"
+          git tag --list | tail -20
+
+          echo "Description:"
+          git describe --tags --always
+
+          echo "===== IMMORTALWRT VERSION ====="
+
+          REVISION="$(./scripts/getver.sh)"
+          echo "Detected revision: $REVISION"
+
+          if [ -z "$REVISION" ] || [ "$REVISION" = "unknown" ]; then
+            echo "::error::ImmortalWrt Git revision is unknown!"
+            exit 1
+          fi
+
+          echo "===== REVISION CHECK PASSED ====="
 
       # ==========================================
       # INITIALIZE BUILD ENVIRONMENT
@@ -57,7 +116,7 @@ jobs:
             ack antlr3 asciidoc autoconf automake autopoint \
             binutils bison build-essential bzip2 ccache clang clangd \
             cmake cpio curl device-tree-compiler ecj fastjar flex gawk \
-            gettext gcc-multilib g++-multilib git gperf haveged help2man \
+            gettext gcc-multilib g++-multilib gperf haveged help2man \
             intltool lib32gcc-s1 libc6-dev-i386 libelf-dev \
             libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
             libncurses5-dev libncursesw5 libncursesw5-dev libreadline-dev \
@@ -72,7 +131,7 @@ jobs:
           mkdir -p /workdir
           chmod 777 /workdir
 
-          echo "===== UBUNTU VERSION ====="
+          echo "===== UBUNTU ====="
           cat /etc/os-release
 
           echo "===== CPU ====="
@@ -81,49 +140,8 @@ jobs:
           echo "===== DISK ====="
           df -hT
 
-          echo "===== GIT VERSION ====="
+          echo "===== GIT ====="
           git --version
-
-      # ==========================================
-      # FIX AND VERIFY GIT REVISION
-      # ==========================================
-      - name: Fix Git Revision
-        shell: bash
-        run: |
-          set -e
-
-          cd "$GITHUB_WORKSPACE"
-
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
-          echo "===== GIT INFORMATION ====="
-
-          echo "Repository:"
-          git rev-parse --show-toplevel
-
-          echo "Commit:"
-          git rev-parse HEAD
-
-          echo "Branch:"
-          git branch --show-current || true
-
-          echo "Tags:"
-          git tag --list | tail -20
-
-          echo "Description:"
-          git describe --tags --always || true
-
-          echo "===== IMMORTALWRT VERSION ====="
-
-          REVISION="$(./scripts/getver.sh)"
-          echo "Detected revision: $REVISION"
-
-          if [ -z "$REVISION" ] || [ "$REVISION" = "unknown" ]; then
-            echo "::error::ImmortalWrt Git revision is unknown!"
-            exit 1
-          fi
-
-          echo "===== VERSION CHECK SUCCESSFUL ====="
 
       # ==========================================
       # UPDATE AND INSTALL FEEDS
@@ -157,7 +175,7 @@ jobs:
 
           make defconfig
 
-          echo "===== KEY CONFIGURATION ====="
+          echo "===== KEY CONFIG ====="
 
           grep -E \
             '^(CONFIG_TARGET_|CONFIG_PACKAGE_luci-app-passwall=|CONFIG_PACKAGE_luci-app-ttyd=|CONFIG_PACKAGE_ttyd=)' \
@@ -176,7 +194,7 @@ jobs:
           find dl -type f -size -1024c -delete
 
       # ==========================================
-      # COMPILE FIRMWARE
+      # COMPILE
       # ==========================================
       - name: Compile
         shell: bash
@@ -193,7 +211,7 @@ jobs:
           echo "===== COMPILATION FINISHED ====="
 
       # ==========================================
-      # UPLOAD FIRMWARE
+      # UPLOAD ARTIFACTS
       # ==========================================
       - name: Upload Artifacts
         uses: actions/upload-artifact@v6
@@ -250,7 +268,7 @@ jobs:
           ls -lh final-release/
 
       # ==========================================
-      # CREATE GITHUB RELEASE
+      # CREATE UNIFIED RELEASE
       # ==========================================
       - name: Create Unified Release
         uses: softprops/action-gh-release@v2
