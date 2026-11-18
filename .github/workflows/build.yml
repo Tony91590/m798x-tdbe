@@ -152,18 +152,12 @@ jobs:
             ## 📦 Release Notes
 
             ### ✨ Build Configurations
-
-            - **minimal**: Minimal build containing only essential OpenWrt core components.
-
-            - **full**: Full build with the following additional pre-installed packages:
               - `luci-proto-wireguard`: WireGuard VPN protocol support
               - `wireguard-tools`: WireGuard management tools
               - `luci-app-wol`: Wake-on-LAN (WoL) interface
-              - `luci-i18n-wol-zh-cn`: WoL Chinese translation
               - `ddns-scripts-cloudflare`: Cloudflare DDNS scripts
               - `ddns-scripts-services`: DDNS service support
               - `luci-app-ddns`: Dynamic DNS configuration interface
-              - `luci-i18n-ddns-zh-cn`: DDNS Chinese translation
               - `bind-host`: BIND DNS lookup utility
               - `luci-app-upnp`: UPnP configuration interface
               - `miniupnpd-nftables`: UPnP / NAT-PMP service
@@ -176,5 +170,3 @@ jobs:
               - `kmod-tun`: TUN virtual network device support
               - `htop`: System resource monitor
               - `etherwake`: Wake-on-LAN utility
-
-            - **passwall**: Built using a separate workflow based on the full configuration, with Passwall additionally integrated. The resulting firmware is uploaded to the same GitHub Release.
