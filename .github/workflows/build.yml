@@ -3,7 +3,7 @@ name: Build ImmortalWrt
 on:
   push:
     tags:
-      - v**
+      - 'v**'
   workflow_dispatch:
 
 concurrency:
@@ -33,6 +33,19 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fix Git Revision
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          echo "===== GIT INFORMATION ====="
+          git rev-parse --show-toplevel
+          git rev-parse HEAD
+          git describe --tags --always || true
+
+          echo "===== IMMORTALWRT VERSION ====="
+          ./scripts/getver.sh
 
       - name: Initialize Build Environment
         run: |
@@ -69,6 +82,23 @@ jobs:
 
           echo "===== Disk ====="
           df -hT
+
+      - name: Verify ImmortalWrt Revision
+        run: |
+          set -e
+
+          echo "===== GIT REVISION ====="
+          git rev-parse --short HEAD
+          git describe --tags --always
+
+          echo "===== GETVER ====="
+          REVISION="$(./scripts/getver.sh)"
+          echo "Detected revision: $REVISION"
+
+          if [ -z "$REVISION" ] || [ "$REVISION" = "unknown" ]; then
+            echo "::error::ImmortalWrt Git revision is unknown!"
+            exit 1
+          fi
 
       - name: Update and Install Feeds
         run: |
@@ -118,6 +148,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     if: ${{ github.event_name == 'push' && github.ref_type == 'tag' }}
 
     steps:
@@ -170,3 +201,4 @@ jobs:
               - `kmod-tun`: TUN virtual network device support
               - `htop`: System resource monitor
               - `etherwake`: Wake-on-LAN utility
+              
