@@ -22,8 +22,6 @@ else
 	uci -q set "turboacc.config.fastpath"="none"
 fi
 
-uci -q set "turboacc.config.fullcone"="2"
-
 uci -q commit "turboacc"
 
 uci -q batch <<-EOF >"/dev/null"
