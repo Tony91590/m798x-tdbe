@@ -68,10 +68,6 @@ start_service() {
 		;;
 	esac
 
-	local fullcone
-	config_get "fullcone" "config" "fullcone" "2"
-	echo "$fullcone" > /proc/sys/net/netfilter/nf_conntrack_nat_mode
-
 	local tcpcca
 	config_get "tcpcca" "config" "tcpcca" "cubic"
 	sysctl -w net.ipv4.tcp_congestion_control="$tcpcca" >"/dev/null"
