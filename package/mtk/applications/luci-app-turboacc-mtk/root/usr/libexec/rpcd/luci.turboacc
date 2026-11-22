@@ -128,25 +128,6 @@ local methods = {
 		end
 	},
 
-	getFullConeStat = {
-		call = function()
-			local fctype
-
-			if fs.access("/sys/module/xt_FULLCONENAT/refcnt") and
-				(readfile("/sys/module/xt_FULLCONENAT/refcnt") or "0") ~= "0"
-			then
-				fctype = "xt_FULLCONENAT"
-
-			elseif fs.access("/proc/sys/net/netfilter/nf_conntrack_nat_mode") and
-				(readfile("/proc/sys/net/netfilter/nf_conntrack_nat_mode") or "0") ~= "0"
-			then
-				fctype = "Boardcom Fullcone"
-			end
-
-			print(json.stringify({ type = fctype }))
-		end
-	},
-
 	getTCPCCAStat = {
 		call = function()
 			local ccatype = readfile("/proc/sys/net/ipv4/tcp_congestion_control")
