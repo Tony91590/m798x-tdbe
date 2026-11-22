@@ -34,7 +34,7 @@
  static DEFINE_SPINLOCK(nf_conntrack_locks_all_lock);
  static __read_mostly bool nf_conntrack_locks_all;
  
-+unsigned int nf_conntrack_nat_mode __read_mostly = 1;
++unsigned int nf_conntrack_nat_mode __read_mostly = 0;
 +EXPORT_SYMBOL(nf_conntrack_nat_mode);
 +
  /* serialize hash resizes and nf_ct_iterate_cleanup */
