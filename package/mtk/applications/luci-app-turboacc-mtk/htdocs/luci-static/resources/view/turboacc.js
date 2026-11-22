@@ -20,12 +20,6 @@ var getFastPathStat = rpc.declare({
 	expect: { '': {} }
 });
 
-var getFullConeStat = rpc.declare({
-	object: 'luci.turboacc',
-	method: 'getFullConeStat',
-	expect: { '': {} }
-});
-
 var getTCPCCAStat = rpc.declare({
 	object: 'luci.turboacc',
 	method: 'getTCPCCAStat',
@@ -41,7 +35,6 @@ var getMTKPPEStat = rpc.declare({
 function getServiceStatus() {
 	return Promise.all([
 		L.resolveDefault(getFastPathStat(), {}),
-		//L.resolveDefault(getFullConeStat(), {}),
 		L.resolveDefault(getTCPCCAStat(), {})
 	]);
 }
@@ -118,10 +111,6 @@ return view.extend({
 				E('tr', {}, [
 					E('td', { 'width': '33%' }, _('FastPath Engine')),
 					E('td', { 'id': 'fastpath_state' }, E('em', {}, _('Collecting data...')))
-				]),
-				E('tr', {}, [
-					E('td', { 'width': '33%' }, _('Full Cone NAT')),
-					E('td', { 'id': 'fullcone_state' }, E('em', {}, _('Collecting data...')))
 				]),
 				E('tr', {}, [
 					E('td', { 'width': '33%' }, _('TCP CCA')),
