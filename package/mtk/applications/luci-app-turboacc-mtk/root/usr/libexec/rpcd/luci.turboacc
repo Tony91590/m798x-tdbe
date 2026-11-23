@@ -83,8 +83,6 @@ local methods = {
 					module_loaded({ "mtkhnat", "mediatek_hnat" }) or
 					fs.stat("/sys/kernel/debug/hnat", "type") == "dir",
 
-				hasXTFULLCONENAT = fs.access("/lib/modules/" .. kernel .. "/xt_FULLCONENAT.ko"),
-
 				hasTCPCCA = readfile("/proc/sys/net/ipv4/tcp_available_congestion_control")
 			}
 
