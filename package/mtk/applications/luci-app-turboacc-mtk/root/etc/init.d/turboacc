@@ -71,8 +71,6 @@ start_service() {
 	local tcpcca
 	config_get "tcpcca" "config" "tcpcca" "cubic"
 	sysctl -w net.ipv4.tcp_congestion_control="$tcpcca" >"/dev/null"
-
-	/etc/init.d/firewall restart >"/dev/null" 2>&1
 }
 
 reload_service() {
