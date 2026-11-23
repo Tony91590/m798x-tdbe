@@ -99,7 +99,7 @@ return view.extend({
 			poll.add(function () {
 				return L.resolveDefault(getServiceStatus()).then(function (res) {
 					var stats = renderStatus(res);
-					var tds = [ 'fastpath_state', 'fullcone_state', 'tcpcca_state' ];
+					var tds = [ 'fastpath_state', 'tcpcca_state' ];
 					for (var i in tds) {
 						var view = document.getElementById(tds[i]);
 						view.innerHTML = stats[i];
